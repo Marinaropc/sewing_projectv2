@@ -1,0 +1,40 @@
+<h1>Upload Your Pattern</h1>
+
+<form action="/upload" method="post" enctype="multipart/form-data">
+  <label for="pattern">Pattern type:</label><br>
+<select name="pattern" id="pattern" required>
+  <option value="bikini_top">Bikini Top</option>
+  <option value="bikini_bottom">Bikini Bottom</option>
+  <option value="corset">Corset</option>
+  <option value="skirt">Skirt</option>
+  <option value="shorts">Shorts</option>
+  <option value="dress">Dress</option>
+  <option value="blouse">Blouse</option>
+
+</select><br><br>
+<label for="original_size">Original pattern size:</label><br>
+<select name="original_size" id="original_size" required>
+  <option value="">-- Select size --</option>
+  <option value="32">32</option>
+  <option value="34">34</option>
+  <option value="36">36</option>
+  <option value="38">38</option>
+  <option value="40">40</option>
+  <option value="42">42</option>
+  <option value="44">44</option>
+  <option value="46">46</option>
+  <option value="48">48</option>
+</select><br>
+  <br><label>Upload pattern file (SVG, PDF):</label><br>
+  <input type="file" name="svg_file" accept=".svg,application/pdf" required><br><br>
+  <label>Bust (cm):</label><br>
+  <input type="number" name="bust" step="0.1"><br><br>
+  <label>Waist (cm):</label><br>
+  <input type="number" name="waist" step="0.1"><br><br>
+  <label>Hips (cm):</label><br>
+  <input type="number" name="hips" step="0.1"><br><br>
+  <label for="torso_height">Torso height (cm):</label><br>
+  <input type="number" step="0.1" name="torso_height" id="torso_height"><br>
+  <br>
+  <button type="submit">Upload & Analyze</button>
+</form>
