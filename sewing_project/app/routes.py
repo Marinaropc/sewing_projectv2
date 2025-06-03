@@ -3,12 +3,12 @@ from .ai_calls import get_pattern_parameters, SIZE_CHART
 from .pattern_generator import generate_bikini_top, generate_corset, generate_bikini_bottom
 import os
 from .gemini_calls import get_sewing_instructions
-from werkzeug.utils import secure_filename
 from .pdf_to_svg import convert_pdf_to_svgs
 from .svg_extract import summarize_svg_pattern
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
-from .utils import build_user_meas_str, clean_upload_dir, is_file_allowed, prepare_upload_path
+from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
+                    prepare_upload_path, save_uploaded_file, get_scale_factors)
 
 app = Flask(__name__)
 
@@ -39,13 +39,10 @@ def upload_file():
             return "Please upload a valid SVG or PDF file.", 400
 
         filename, filepath, upload_dir = prepare_upload_path(file.filename, app.root_path)
-        if filename.lower().endswith(".svg"):
-            svg_content = file.read().decode("utf-8")
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(svg_content)
-        elif filename.lower().endswith(".pdf"):
-            file.save(filepath)
-        else:
+        clean_upload_dir(upload_dir)
+        try:
+            file_type = save_uploaded_file(file, filepath)
+        except ValueError:
             return "Unsupported file type", 400
         print(f"Uploaded filename: {filename}")
         if filename.lower().endswith(".pdf"):
@@ -60,13 +57,7 @@ def upload_file():
             trimmed_summary = "\n".join(summary.splitlines()[:10])
             user_meas_str = build_user_meas_str(bust, waist, hips)
 
-            scale_x = scale_y = 1.0
-            if original_size and original_size in SIZE_CHART:
-                original = SIZE_CHART[original_size]
-                if bust and original["bust"]:
-                    scale_x = bust / original["bust"]
-                if hips and original["hips"]:
-                    scale_y = hips / original["hips"]
+            scale_x, scale_y = get_scale_factors(original_size, bust, hips, SIZE_CHART)
 
             resize_response = get_pattern_parameters(pattern_type, trimmed_summary, user_meas_str, original_size)
 
@@ -106,17 +97,11 @@ def upload_file():
                     # Tile the resized PNG, not the original
                     tiled_paths = tile_image_to_a4(resized_png_path, resized_dir)
                     resized_pngs.extend(tiled_paths)
-                    print(f"✅ Appending {len(tiled_paths)} tiles for {resized_png_path}")
 
-                    # Remove or comment out the previous tiling call on the original PNG:
-                    # tiled_paths = tile_image_to_a4(output_png, resized_dir)
                 except Exception as e:
                     print(f"Error converting {output_svg} to PNG: {e}")
 
             from zipfile import ZipFile
-
-            print(f"🧩 Total PNGs to zip: {len(resized_pngs)}")
-            print(f"Files: {resized_pngs}")
 
             zip_filename = f"resized_{os.path.splitext(filename)[0]}.zip"
             zip_path = os.path.join(resized_dir, zip_filename)
@@ -162,6 +147,9 @@ def upload_file():
             if vertical and base_vertical:
                 scale_y = vertical / base_vertical
 
+        # Read SVG content from uploaded file
+        with open(filepath, "r", encoding="utf-8") as f:
+            svg_content = f.read()
         # Apply scaling
         scaled_svg = scale_svg(svg_content, scale_x, scale_y)
         output_path = os.path.join("scaled", f"scaled_{filename}")

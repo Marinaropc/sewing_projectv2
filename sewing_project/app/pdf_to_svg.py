@@ -13,7 +13,7 @@ def convert_pdf_to_svgs(pdf_path, output_dir):
         single_page_pdf = os.path.join(output_dir, f"temp_page_{i + 1}.pdf")
         output_svg = os.path.join(output_dir, f"page_{i + 1}.svg")
         writer = PdfWriter()
-        # Ensure /Resources is present for Inkscape compatibility
+        # Ensure /Resources is present for Inkscape
         if "/Resources" not in page:
             page[NameObject("/Resources")] = writer._add_object(DictionaryObject())
         writer.add_page(page)
@@ -31,7 +31,7 @@ def convert_pdf_to_svgs(pdf_path, output_dir):
                 svg_paths.append(output_svg)
         except subprocess.CalledProcessError as e:
             print(f"Failed to convert page {i+1}: {e}")
-        # Only remove temp PDF after confirming SVG conversion (not in finally)
+        # Only remove temp PDF after confirming SVG conversion
         if os.path.exists(single_page_pdf):
             os.remove(single_page_pdf)
 

@@ -91,7 +91,7 @@ def tile_image_to_a4(image_path, output_dir):
 
             tile = image.crop((left, upper, right, lower))
 
-            # Add white background if tile is smaller than A4
+            # Add white background if tile smaller than A4
             if tile.size != (a4_width_px, a4_height_px):
                 background = Image.new("RGB", (a4_width_px, a4_height_px), (255, 255, 255))
                 background.paste(tile, (0, 0))
