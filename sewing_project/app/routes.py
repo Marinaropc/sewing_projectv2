@@ -9,7 +9,8 @@ from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
 from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
                     prepare_upload_path, save_uploaded_file, get_scale_factors,
-                    extract_user_meas, get_summary_svg_paths, prepare_resize_params)
+                    extract_user_meas, get_summary_svg_paths, prepare_resize_params,
+                    generate_scaled_svgs_and_pngs)
 
 
 app = Flask(__name__)
@@ -61,48 +62,11 @@ def upload_file():
 
             resize_response = get_pattern_parameters(pattern_type, trimmed_summary, user_meas_str, original_size)
 
-            resized_svgs = []
-            resized_pngs = []
-            resized_dir = os.path.join(upload_dir, "resized")
-            os.makedirs(resized_dir, exist_ok=True)
-
-            for svg_path in svg_paths:
-                with open(svg_path, "r", encoding="utf-8") as f:
-                    svg_content = f.read()
-
-                scaled_svg = scale_svg(svg_content, scale_x, scale_y)
-
-                output_svg = os.path.join(resized_dir, os.path.basename(svg_path))
-                with open(output_svg, "w", encoding="utf-8") as f:
-                    f.write(scaled_svg)
-
-                resized_svgs.append(output_svg)
-
-                # Convert SVG to PNG with Inkscape
-                output_png = os.path.splitext(output_svg)[0] + ".png"
-                cmd = [
-                    "inkscape",
-                    output_svg,
-                    "--export-area-drawing",
-                    "--export-type=png",
-                    "--export-filename", output_png
-                ]
-                try:
-                    subprocess.run(cmd, check=True)
-
-                    # Resize PNG before tiling
-                    resized_png_path = output_png.replace(".png", "_resized.png")
-                    resize_image(output_png, resized_png_path, scale_x=3.0, scale_y=3.0)
-
-                    # Tile the resized PNG, not the original
-                    tiled_paths = tile_image_to_a4(resized_png_path, resized_dir)
-                    resized_pngs.extend(tiled_paths)
-
-                except Exception as e:
-                    print(f"Error converting {output_svg} to PNG: {e}")
+            resized_pngs, resized_svgs = generate_scaled_svgs_and_pngs(svg_paths, scale_x, scale_y, upload_dir)
 
             from zipfile import ZipFile
 
+            resized_dir = os.path.join(upload_dir, "resized")
             zip_filename = f"resized_{os.path.splitext(filename)[0]}.zip"
             zip_path = os.path.join(resized_dir, zip_filename)
 

@@ -1,6 +1,8 @@
 import os
 from werkzeug.utils import secure_filename
-from .resize import safe_float
+from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
+import subprocess
+
 
 def build_user_meas_str(bust, waist, hips):
     measurements = []
@@ -55,6 +57,7 @@ def get_scale_factors(original_size, bust, hips, size_chart):
             scale_y = hips / original["hips"]
     return scale_x, scale_y
 
+
 def extract_user_meas(request):
     pattern_type = request.form.get("pattern")
     bust = safe_float(request.form.get("bust"))
@@ -62,6 +65,7 @@ def extract_user_meas(request):
     hips = safe_float(request.form.get("hips"))
     original_size = request.form.get("original_size")
     return pattern_type, bust, waist, hips, original_size
+
 
 def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_svg_pattern):
     if filepath.lower().endswith(".pdf"):
@@ -74,6 +78,7 @@ def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_s
         summary = summarize_svg_pattern(filepath)
     return summary, svg_paths
 
+
 def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_size, get_pattern_parameters):
     trimmed_summary = "\n".join(summary.splitlines()[:10])
     user_meas_str = build_user_meas_str(bust, waist, hips)
@@ -81,3 +86,36 @@ def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_siz
         pattern_type, trimmed_summary, user_meas_str, original_size
     )
     return resize_response, user_meas_str
+
+
+def generate_scaled_svgs_and_pngs(svg_paths, scale_x, scale_y, upload_dir):
+    resized_svgs = []
+    resized_pngs = []
+    resized_dir = os.path.join(upload_dir, "resized")
+    os.makedirs(resized_dir, exist_ok=True)
+    for svg_path in svg_paths:
+        with open(svg_path, "r", encoding="utf-8") as f:
+            svg_content = f.read()
+        scaled_svg = scale_svg(svg_content, scale_x, scale_y)
+        output_svg = os.path.join(resized_dir, os.path.basename(svg_path))
+        with open(output_svg, "w", encoding="utf-8") as f:
+            f.write(scaled_svg)
+        resized_svgs.append(output_svg)
+        # Convert to PNG
+        output_png = os.path.splitext(output_svg)[0] + ".png"
+        cmd = [
+            "inkscape",
+            output_svg,
+            "--export-area-drawing",
+            "--export-type=png",
+            "--export-filename", output_png
+        ]
+        try:
+            subprocess.run(cmd, check=True)
+            resized_png_path = output_png.replace(".png", "_resized.png")
+            resize_image(output_png, resized_png_path, scale_x=3.0, scale_y=3.0)
+            tiled_paths = tile_image_to_a4(resized_png_path, resized_dir)
+            resized_pngs.extend(tiled_paths)
+        except Exception as e:
+            print(f"Error converting {output_svg} to PNG: {e}")
+    return resized_pngs, resized_svgs
