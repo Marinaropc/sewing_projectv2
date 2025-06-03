@@ -73,3 +73,11 @@ def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_s
         svg_paths = [filepath]
         summary = summarize_svg_pattern(filepath)
     return summary, svg_paths
+
+def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_size, get_pattern_parameters):
+    trimmed_summary = "\n".join(summary.splitlines()[:10])
+    user_meas_str = build_user_meas_str(bust, waist, hips)
+    resize_response = get_pattern_parameters(
+        pattern_type, trimmed_summary, user_meas_str, original_size
+    )
+    return resize_response, user_meas_str

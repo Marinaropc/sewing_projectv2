@@ -9,7 +9,7 @@ from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
 from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
                     prepare_upload_path, save_uploaded_file, get_scale_factors,
-                    extract_user_meas, get_summary_svg_paths)
+                    extract_user_meas, get_summary_svg_paths, prepare_resize_params)
 
 
 app = Flask(__name__)
@@ -122,12 +122,9 @@ def upload_file():
                 hips=hips,
                 instructions=instructions
             )
-        # For GPT
-        trimmed_summary = "\n".join(summary.splitlines()[:10])
-        user_meas_str = build_user_meas_str(bust, waist, hips)
-        # Get GPT resize instructions
-        resize_response = get_pattern_parameters(
-            pattern_type, trimmed_summary, user_meas_str, original_size
+        # For gpt
+        trimmed_summary, user_meas_str, scale_x, scale_y, resize_response = prepare_resize_params(
+            summary, bust, waist, hips, original_size, pattern_type, SIZE_CHART
         )
 
 
