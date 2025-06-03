@@ -8,7 +8,9 @@ from .svg_extract import summarize_svg_pattern
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
 from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
-                    prepare_upload_path, save_uploaded_file, get_scale_factors)
+                    prepare_upload_path, save_uploaded_file, get_scale_factors,
+                    extract_user_meas, get_summary_svg_paths)
+
 
 app = Flask(__name__)
 
@@ -28,11 +30,7 @@ def download_zip(filename):
 def upload_file():
     if request.method == "POST":
         # Get pattern type and measurements from user
-        pattern_type = request.form.get("pattern")
-        bust = safe_float(request.form.get("bust"))
-        waist = safe_float(request.form.get("waist"))
-        hips = safe_float(request.form.get("hips"))
-        original_size = request.form.get("original_size")
+        pattern_type, bust, waist, hips, original_size = extract_user_meas(request)
 
         file = request.files.get("svg_file")
         if not file or not is_file_allowed(file.filename, {"svg", "pdf"}):
@@ -45,15 +43,17 @@ def upload_file():
         except ValueError:
             return "Unsupported file type", 400
         print(f"Uploaded filename: {filename}")
+        try:
+            summary, svg_paths = get_summary_svg_paths(
+                filepath,
+                upload_dir,
+                convert_pdf_to_svgs,
+                summarize_svg_pattern
+            )
+        except Exception as e:
+            print(f"Error in get_summary_and_svg_paths: {e}")
+            return "Failed to process uploaded file", 500
         if filename.lower().endswith(".pdf"):
-            try:
-                print("✅ Calling convert_pdf_to_svgs...")
-                svg_paths = convert_pdf_to_svgs(filepath, os.path.join(upload_dir, "svg_pages"))
-                print(f"SVGs generated from PDF: {svg_paths}")
-            except Exception as e:
-                print(f"❌ Error in convert_pdf_to_svgs: {e}")
-                return "Failed to convert PDF to SVG", 500
-            summary = summarize_svg_pattern(svg_paths[0]) if svg_paths else "No SVG pages were created."
             trimmed_summary = "\n".join(summary.splitlines()[:10])
             user_meas_str = build_user_meas_str(bust, waist, hips)
 
@@ -123,7 +123,6 @@ def upload_file():
                 instructions=instructions
             )
         # For GPT
-        summary = summarize_svg_pattern(filepath)
         trimmed_summary = "\n".join(summary.splitlines()[:10])
         user_meas_str = build_user_meas_str(bust, waist, hips)
         # Get GPT resize instructions

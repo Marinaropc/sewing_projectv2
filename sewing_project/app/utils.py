@@ -1,6 +1,6 @@
 import os
 from werkzeug.utils import secure_filename
-
+from .resize import safe_float
 
 def build_user_meas_str(bust, waist, hips):
     measurements = []
@@ -54,3 +54,22 @@ def get_scale_factors(original_size, bust, hips, size_chart):
         if hips and original["hips"]:
             scale_y = hips / original["hips"]
     return scale_x, scale_y
+
+def extract_user_meas(request):
+    pattern_type = request.form.get("pattern")
+    bust = safe_float(request.form.get("bust"))
+    waist = safe_float(request.form.get("waist"))
+    hips = safe_float(request.form.get("hips"))
+    original_size = request.form.get("original_size")
+    return pattern_type, bust, waist, hips, original_size
+
+def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_svg_pattern):
+    if filepath.lower().endswith(".pdf"):
+        svg_pages_dir = os.path.join(upload_dir, "svg_pages")
+        os.makedirs(svg_pages_dir, exist_ok=True)
+        svg_paths = convert_pdf_to_svgs(filepath, svg_pages_dir)
+        summary = summarize_svg_pattern(svg_paths[0]) if svg_paths else "No SVG pages were created."
+    else:
+        svg_paths = [filepath]
+        summary = summarize_svg_pattern(filepath)
+    return summary, svg_paths
