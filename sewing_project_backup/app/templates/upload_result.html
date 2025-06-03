@@ -1,0 +1,15 @@
+<h2>Extracted Elements</h2>
+
+<h2>User Measurements</h2>
+<ul>
+  <li>Bust: {{ bust }} cm</li>
+  <li>Waist: {{ waist }} cm</li>
+  <li>Hips: {{ hips }} cm</li>
+</ul>
+{% if zipfile %}
+  <p><a href="{{ url_for('download_zip', filename=zipfile) }}" download>⬇️ Download ZIP</a></p>
+{% elif filename and scaled_svg %}
+  <p><a href="{{ url_for('download_scaled', filename='scaled_' + filename) }}" download>⬇️ Download Scaled SVG</a></p>
+{% endif %}
+<h2>Sewing Instructions</h2>
+<p>{{ instructions }}</p>

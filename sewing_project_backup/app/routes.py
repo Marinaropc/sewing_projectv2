@@ -8,9 +8,13 @@ from .pdf_to_svg import convert_pdf_to_svgs
 from .svg_extract import summarize_svg_pattern
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
-from .utils import build_user_meas_str, clean_upload_dir, is_file_allowed, prepare_upload_path
 
 app = Flask(__name__)
+
+def clean_upload_dir(upload_dir):
+    for root, dirs, files in os.walk(upload_dir):
+        for file in files:
+            os.remove(os.path.join(root, file))
 
 
 @app.route("/")
@@ -35,10 +39,14 @@ def upload_file():
         original_size = request.form.get("original_size")
 
         file = request.files.get("svg_file")
-        if not file or not is_file_allowed(file.filename, {"svg", "pdf"}):
-            return "Please upload a valid SVG or PDF file.", 400
+        if not file:
+            return "Please upload a file.", 400
 
-        filename, filepath, upload_dir = prepare_upload_path(file.filename, app.root_path)
+        filename = secure_filename(file.filename)
+        upload_dir = os.path.join(app.root_path, "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        clean_upload_dir(upload_dir)
+        filepath = os.path.join(upload_dir, filename)
         if filename.lower().endswith(".svg"):
             svg_content = file.read().decode("utf-8")
             with open(filepath, "w", encoding="utf-8") as f:
@@ -58,7 +66,14 @@ def upload_file():
                 return "Failed to convert PDF to SVG", 500
             summary = summarize_svg_pattern(svg_paths[0]) if svg_paths else "No SVG pages were created."
             trimmed_summary = "\n".join(summary.splitlines()[:10])
-            user_meas_str = build_user_meas_str(bust, waist, hips)
+            measurements = []
+            if bust:
+                measurements.append(f"bust = {bust}")
+            if waist:
+                measurements.append(f"waist = {waist}")
+            if hips:
+                measurements.append(f"hips = {hips}")
+            user_meas_str = ", ".join(measurements)
 
             scale_x = scale_y = 1.0
             if original_size and original_size in SIZE_CHART:
@@ -140,7 +155,16 @@ def upload_file():
         # For GPT
         summary = summarize_svg_pattern(filepath)
         trimmed_summary = "\n".join(summary.splitlines()[:10])
-        user_meas_str = build_user_meas_str(bust, waist, hips)
+
+        measurements = []
+        if bust:
+            measurements.append(f"bust = {bust}")
+        if waist:
+            measurements.append(f"waist = {waist}")
+        if hips:
+            measurements.append(f"hips = {hips}")
+
+        user_meas_str = ", ".join(measurements)
         # Get GPT resize instructions
         resize_response = get_pattern_parameters(
             pattern_type, trimmed_summary, user_meas_str, original_size
