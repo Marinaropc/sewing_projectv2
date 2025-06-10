@@ -7,9 +7,4 @@ python-dotenv~=1.1.0
 svgpathtools~=1.6.1
 protobuf~=5.29.4
 pdf2image
-PIL
-os
-subprocess
-math
-xml
 google.generativeai
