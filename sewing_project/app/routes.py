@@ -1,16 +1,17 @@
 from flask import Flask, render_template, request, send_from_directory
-from .ai_calls import get_pattern_parameters, SIZE_CHART
-from .pattern_generator import generate_bikini_top, generate_corset, generate_bikini_bottom
+from .ai_calls import (get_pattern_parameters, generate_pattern_params_bikini_top,
+                       generate_pattern_params_bikini_bottom, SIZE_CHART)
+from .pattern_generator import generate_bikini_top, generate_bikini_bottom
 import os
 from .gemini_calls import get_sewing_instructions
 from .pdf_to_svg import convert_pdf_to_svgs
 from .svg_extract import summarize_svg_pattern
-from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
-import subprocess
+from .resize import safe_float
 from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
                     prepare_upload_path, save_uploaded_file, get_scale_factors,
                     extract_user_meas, get_summary_svg_paths, prepare_resize_params,
-                    generate_scaled_svgs_and_pngs)
+                    generate_scaled, scale_and_save_svg, zip_pngs, build_render_context,
+                    parse_dimensions)
 
 
 app = Flask(__name__)
@@ -57,41 +58,19 @@ def upload_file():
         if filename.lower().endswith(".pdf"):
             trimmed_summary = "\n".join(summary.splitlines()[:10])
             user_meas_str = build_user_meas_str(bust, waist, hips)
-
             scale_x, scale_y = get_scale_factors(original_size, bust, hips, SIZE_CHART)
-
             resize_response = get_pattern_parameters(pattern_type, trimmed_summary, user_meas_str, original_size)
-
-            resized_pngs, resized_svgs = generate_scaled_svgs_and_pngs(svg_paths, scale_x, scale_y, upload_dir)
-
-            from zipfile import ZipFile
-
-            resized_dir = os.path.join(upload_dir, "resized")
-            zip_filename = f"resized_{os.path.splitext(filename)[0]}.zip"
-            zip_path = os.path.join(resized_dir, zip_filename)
-
-            with ZipFile(zip_path, 'w') as zipf:
-                for png_file in resized_pngs:
-                    if os.path.exists(png_file):
-                        zipf.write(png_file, os.path.basename(png_file))
-                    else:
-                        print(f"⚠️ Warning: Skipping missing file: {png_file}")
+            resized_pngs, resized_svgs = generate_scaled(svg_paths, scale_x, scale_y, upload_dir)
+            zip_filename, zip_path = zip_pngs(resized_pngs, upload_dir, filename)
             instructions = get_sewing_instructions(pattern_type, user_meas_str)
             return render_template(
                 "upload_result.html",
-                zipfile=zip_filename,
-                filename=filename,
-                bust=bust,
-                waist=waist,
-                hips=hips,
-                instructions=instructions
+                **build_render_context(filename, bust, waist, hips, instructions, zip_filename=zip_filename)
             )
         # For gpt
         trimmed_summary, user_meas_str, scale_x, scale_y, resize_response = prepare_resize_params(
             summary, bust, waist, hips, original_size, pattern_type, SIZE_CHART
         )
-
-
         # Parse scale factors
         scale_x = scale_y = 1.0
         for line in resize_response.splitlines():
@@ -99,28 +78,15 @@ def upload_file():
                 scale_x = float(line.split("=", 1)[1].strip())
             if "scale_y" in line:
                 scale_y = float(line.split("=", 1)[1].strip())
-
-
         if scale_y == 1.0:
             vertical = safe_float(request.form.get("torso_height"))
             base_vertical = 30
             if vertical and base_vertical:
                 scale_y = vertical / base_vertical
-
-        # Read SVG content from uploaded file
-        with open(filepath, "r", encoding="utf-8") as f:
-            svg_content = f.read()
-        # Apply scaling
-        scaled_svg = scale_svg(svg_content, scale_x, scale_y)
-        output_path = os.path.join("scaled", f"scaled_{filename}")
-        os.makedirs("scaled", exist_ok=True)
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(scaled_svg)
-
+        scaled_svg, output_path = scale_and_save_svg(filepath, filename, scale_x, scale_y)
         # For gemini
         instructions = get_sewing_instructions(pattern_type, user_meas_str)
         print(f"Received pattern_type: {pattern_type}")
-
         print("Download filename:", filename)
         return render_template(
             "upload_result.html",
@@ -151,22 +117,13 @@ def generate():
         if not bust_str:
             return "Error: Bust measurement is required for bikini top.", 400
         bust = float(bust_str)
-
         user_meas_str = f"bust = {bust}"
-        ai_response = get_pattern_parameters("bikini_top", "simple shape", user_meas_str)
-
+        ai_response = generate_pattern_params_bikini_top(user_measurements=user_meas_str)
         try:
-            for line in ai_response.splitlines():
-                if "width" in line and "height" in line:
-                    parts = line.replace("**", "").replace("Output:", "").split(",")
-                    width = float(parts[0].split("=")[1].strip())
-                    height = float(parts[1].split("=")[1].strip())
-                    break
-            else:
-                raise ValueError("No valid line found with width and height")
-
-            svg = generate_bikini_top(width)
-
+            dims = parse_dimensions(ai_response, ["width", "height"])
+            width = dims["width"]
+            height = dims["height"]
+            svg = generate_bikini_top(width, height)
         except Exception as e:
             return f"Error parsing AI response: {e}", 500
 
@@ -175,47 +132,17 @@ def generate():
         if not waist_str:
             return "Error: Waist measurement is required for bikini bottom.", 400
         waist = float(waist_str)
-        ai_response = get_pattern_parameters("bikini_bottom", f"waist = {waist}")
+        ai_response = generate_pattern_params_bikini_bottom(user_measurements=waist)
         try:
-            for line in ai_response.splitlines():
-                if "width" in line and "height" in line:
-                    parts = line.replace("**", "").replace("Output:", "").split(",")
-                    width = float(parts[0].split("=")[1].strip())
-                    height = float(parts[1].split("=")[1].strip())
-                    break
-            else:
-                raise ValueError("No valid line found with width and height")
+            dims = parse_dimensions(ai_response, ["width", "height"])
+            width = dims["width"]
+            height = dims["height"]
 
-            svg = generate_bikini_bottom(waist)
+            svg = generate_bikini_bottom(width, height)
 
         except Exception as e:
             return f"Error parsing AI response: {e}", 500
-
-    elif pattern_type == 'corset':
-        waist_str = request.form.get('waist', '').strip()
-        bust_str = request.form.get('bust', '').strip()
-        if not waist_str or not bust_str:
-            return "Error: Both waist and bust measurements are required for corset.", 400
-        waist = float(waist_str)
-        bust = float(bust_str)
-        ai_response = get_pattern_parameters("corset", f"waist = {waist}, bust = {bust}")
-
-        try:
-            for line in ai_response.splitlines():
-                if "top_width" in line and "bottom_width" in line and "height" in line:
-                    parts = line.replace("**", "").replace("Output:", "").split(",")
-                    top_width = float(parts[0].split("=")[1].strip())
-                    bottom_width = float(parts[1].split("=")[1].strip())
-                    height = float(parts[2].split("=")[1].strip())
-                    break
-            else:
-                raise ValueError("No valid line found with top_width, bottom_width, and height")
-
-            svg = generate_corset(top_width, bottom_width)
-
-        except Exception as e:
-            return f"Error parsing AI response: {e}", 500
-
     else:
         svg = "<p>Invalid pattern</p>"
+    print("Rendering SVG:", svg[:200])
     return render_template("result.html", svg = svg)

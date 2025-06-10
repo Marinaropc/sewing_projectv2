@@ -97,7 +97,6 @@ def tile_image_to_a4(image_path, output_dir):
                 background.paste(tile, (0, 0))
                 tile = background
 
-            # Draw reference line
             draw = ImageDraw.Draw(tile)
             add_reference_line(draw, tile.size)
 

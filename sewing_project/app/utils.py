@@ -2,7 +2,8 @@ import os
 from werkzeug.utils import secure_filename
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
 import subprocess
-
+from zipfile import ZipFile
+import re
 
 def build_user_meas_str(bust, waist, hips):
     measurements = []
@@ -88,7 +89,7 @@ def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_siz
     return resize_response, user_meas_str
 
 
-def generate_scaled_svgs_and_pngs(svg_paths, scale_x, scale_y, upload_dir):
+def generate_scaled(svg_paths, scale_x, scale_y, upload_dir):
     resized_svgs = []
     resized_pngs = []
     resized_dir = os.path.join(upload_dir, "resized")
@@ -119,3 +120,59 @@ def generate_scaled_svgs_and_pngs(svg_paths, scale_x, scale_y, upload_dir):
         except Exception as e:
             print(f"Error converting {output_svg} to PNG: {e}")
     return resized_pngs, resized_svgs
+
+def scale_and_save_svg(filepath, filename, scale_x, scale_y):
+    with open(filepath, "r", encoding="utf-8") as f:
+        svg_content = f.read()
+    scaled_svg = scale_svg(svg_content, scale_x, scale_y)
+    output_path = os.path.join("scaled", f"scaled_{filename}")
+    os.makedirs("scaled", exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(scaled_svg)
+    return scaled_svg, output_path
+
+
+def zip_pngs(resized_pngs, upload_dir, filename):
+    resized_dir = os.path.join(upload_dir, "resized")
+    os.makedirs(resized_dir, exist_ok=True)
+    zip_filename = f"resized_{os.path.splitext(filename)[0]}.zip"
+    zip_path = os.path.join(resized_dir, zip_filename)
+    with ZipFile(zip_path, 'w') as zipf:
+        for png_file in resized_pngs:
+            if os.path.exists(png_file):
+                zipf.write(png_file, os.path.basename(png_file))
+            else:
+                print(f"Warning: Skipping missing file: {png_file}")
+    return zip_filename, zip_path
+
+
+def build_render_context(filename, bust, waist, hips, instructions, zip_filename=None, scaled_svg=None):
+    return {
+        "filename": filename,
+        "bust": bust,
+        "waist": waist,
+        "hips": hips,
+        "instructions": instructions,
+        "zipfile": zip_filename,
+        "scaled_svg": scaled_svg
+    }
+
+
+def parse_dimensions(response_text, keys):
+    values = {}
+    for line in response_text.splitlines():
+        line = line.replace("**", "").replace("Output:", "").strip()
+        for key in keys:
+            if line.lower().startswith(f"{key.lower()} ="):
+                try:
+                    raw_value = line.split("=", 1)[1].strip()
+                    if key.lower() in ["width", "height"]:
+                        values[key] = float(re.search(r"[-+]?\d*\.\d+|\d+", raw_value).group())
+                    else:
+                        values[key] = raw_value
+                except Exception as e:
+                    raise ValueError(f"Could not parse {key} from: {line} → {e}")
+    if all(k in values for k in keys):
+        return values
+    else:
+        raise ValueError(f"No valid line found with keys {keys}")
