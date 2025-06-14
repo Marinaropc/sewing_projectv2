@@ -1,8 +1,8 @@
 from svgpathtools import svg2paths2
 
+
 def extract_paths_and_labels(svg_path):
     paths, attributes, svg_attributes = svg2paths2(svg_path)
-
     elements = list()
     for attr in attributes:
         if 'd' in attr:
@@ -10,6 +10,7 @@ def extract_paths_and_labels(svg_path):
         elif 'text' in attr:
             elements.append({"type": "text", "text": attr["text"], "id": attr.get("id", "")})
     return elements
+
 
 def summarize_svg_pattern(svg_path):
     paths, attributes, svg_attributes = svg2paths2(svg_path)

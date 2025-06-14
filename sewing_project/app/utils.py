@@ -5,6 +5,7 @@ from zipfile import ZipFile
 import re
 import cairosvg
 
+
 def build_user_meas_str(bust, waist, hips):
     measurements = []
     if bust:

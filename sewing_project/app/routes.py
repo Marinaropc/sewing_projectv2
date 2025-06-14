@@ -41,7 +41,7 @@ def upload_file():
         filename, filepath, upload_dir = prepare_upload_path(file.filename, app.root_path)
         clean_upload_dir(upload_dir)
         try:
-            file_type = save_uploaded_file(file, filepath)
+            save_uploaded_file(file, filepath)
         except ValueError:
             return "Unsupported file type", 400
         print(f"Uploaded filename: {filename}")

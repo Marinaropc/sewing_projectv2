@@ -18,6 +18,7 @@ Your task:
 - Use clear, short, numbered steps.
 - Limit to 5 steps maximum.
 - If important measurements are missing, still create simple instructions.
+- Mention a 3cm line has been created for dimension guidance
     """
 
     model = genai.GenerativeModel('gemini-1.5-flash')

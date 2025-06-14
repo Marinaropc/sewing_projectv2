@@ -29,7 +29,6 @@ def generate_bikini_top(width, height, path_logic=None):
         f"M {right_top_x} {right_top_y} "
         f"L {right_top_x} {right_top_y - height * 0.2}"
     )
-
     path = svg.path(d=path_data, fill="none", stroke="black", stroke_width=1.5)
     svg.add(path)
     return svg.tostring()
