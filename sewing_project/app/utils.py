@@ -1,9 +1,9 @@
 import os
 from werkzeug.utils import secure_filename
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
-import subprocess
 from zipfile import ZipFile
 import re
+import cairosvg
 
 def build_user_meas_str(bust, waist, hips):
     measurements = []
@@ -102,17 +102,10 @@ def generate_scaled(svg_paths, scale_x, scale_y, upload_dir):
         with open(output_svg, "w", encoding="utf-8") as f:
             f.write(scaled_svg)
         resized_svgs.append(output_svg)
-        # Convert to PNG
+        # Convert to PNG using cairosvg
         output_png = os.path.splitext(output_svg)[0] + ".png"
-        cmd = [
-            "inkscape",
-            output_svg,
-            "--export-area-drawing",
-            "--export-type=png",
-            "--export-filename", output_png
-        ]
         try:
-            subprocess.run(cmd, check=True)
+            cairosvg.svg2png(url=output_svg, write_to=output_png)
             resized_png_path = output_png.replace(".png", "_resized.png")
             resize_image(output_png, resized_png_path, scale_x=3.0, scale_y=3.0)
             tiled_paths = tile_image_to_a4(resized_png_path, resized_dir)

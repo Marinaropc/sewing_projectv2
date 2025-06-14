@@ -91,11 +91,17 @@ def tile_image_to_a4(image_path, output_dir):
 
             tile = image.crop((left, upper, right, lower))
 
-            # Add white background if tile smaller than A4
-            if tile.size != (a4_width_px, a4_height_px):
-                background = Image.new("RGB", (a4_width_px, a4_height_px), (255, 255, 255))
-                background.paste(tile, (0, 0))
-                tile = background
+            # Always convert to RGBA to handle transparency safely
+            tile = tile.convert("RGBA")
+
+            # Create white background and paste using alpha mask
+            background = Image.new("RGBA", (a4_width_px, a4_height_px), (255, 255, 255, 255))
+            paste_x = (a4_width_px - tile.width) // 2
+            paste_y = (a4_height_px - tile.height) // 2
+            background.paste(tile, (paste_x, paste_y), mask=tile)
+
+            # Convert back to RGB before saving
+            tile = background.convert("RGB")
 
             draw = ImageDraw.Draw(tile)
             add_reference_line(draw, tile.size)

@@ -19,11 +19,11 @@ def convert_pdf_to_svgs(pdf_path, output_dir):
         writer.add_page(page)
         with open(single_page_pdf, "wb") as f:
             writer.write(f)
-        #find which one was the API/python library I could use to not use inkscape
         cmd = [
-            "inkscape",
+            "pdf2svg",
             single_page_pdf,
-            "--export-filename", output_svg
+            output_svg,
+            "1"
         ]
         try:
             subprocess.run(cmd, check=True)
