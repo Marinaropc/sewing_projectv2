@@ -2,7 +2,6 @@ import os
 import subprocess
 from PyPDF2 import PdfReader, PdfWriter
 from PyPDF2.generic import NameObject, DictionaryObject
-import tempfile
 from pdf2image import convert_from_path
 import pytesseract
 
@@ -23,7 +22,8 @@ def get_required_rotation(pdf_path, page_number):
         if "Rotate: 270" in osd:
             return -90         # needs counter-clockwise rotation
     except Exception as e:
-        print(f"OSD failed on page {page_number}: {e}")
+        # print(f"OSD failed on page {page_number}: {e}")
+        pass
     return 0                   # assume right-way-up
 
 

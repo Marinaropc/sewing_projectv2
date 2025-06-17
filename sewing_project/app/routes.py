@@ -12,6 +12,8 @@ from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
                     extract_user_meas, get_summary_svg_paths, prepare_resize_params,
                     generate_scaled, scale_and_save_svg, zip_pngs, build_render_context,
                     parse_dimensions)
+import sqlite3
+from .database.db_helper import save_upload_to_db
 
 
 app = Flask(__name__)
@@ -63,6 +65,11 @@ def upload_file():
             resized_pngs, resized_svgs = generate_scaled(svg_paths, scale_x, scale_y, upload_dir)
             zip_filename, zip_path = zip_pngs(resized_pngs, upload_dir, filename)
             instructions = get_sewing_instructions(pattern_type, user_meas_str)
+            save_upload_to_db(
+                filename, "pdf", pattern_type, zip_filename,
+                bust, waist, hips, safe_float(request.form.get("torso_height")), original_size,
+                scale_x, scale_y, resize_response, instructions
+            )
             return render_template(
                 "upload_result.html",
                 **build_render_context(filename, bust, waist, hips, instructions, zip_filename=zip_filename)
@@ -86,6 +93,11 @@ def upload_file():
         scaled_svg, output_path = scale_and_save_svg(filepath, filename, scale_x, scale_y)
         # For gemini
         instructions = get_sewing_instructions(pattern_type, user_meas_str)
+        save_upload_to_db(
+            filename, "svg", pattern_type, None,
+            bust, waist, hips, safe_float(request.form.get("torso_height")), original_size,
+            scale_x, scale_y, resize_response, instructions
+        )
         print(f"Received pattern_type: {pattern_type}")
         print("Download filename:", filename)
         return render_template(
