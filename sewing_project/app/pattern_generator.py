@@ -1,6 +1,13 @@
+"""
+Generates SVG patterns for bikini tops and bottoms based on given measurements.
+"""
 import svgwrite
 
 def generate_bikini_top(width, height, path_logic=None):
+    """
+    Generate an SVG for a bikini top using simple geometric shapes.
+    Draws two triangle cups and vertical straps.
+    """
     svg = svgwrite.Drawing(size=("400mm", "400mm"))
     # Draw two triangle cups for the bikini top
     left_top_x = 10 + width * 0.1
@@ -85,6 +92,9 @@ def generate_bikini_bottom(width: float, height: float) -> str:
 
 
 def strip_svg_namespace(elem):
+    """
+    Remove XML namespace from all SVG tags for easier parsing.
+    """
     for el in elem.iter():
         if '}' in el.tag:
             el.tag = el.tag.split('}', 1)[1]

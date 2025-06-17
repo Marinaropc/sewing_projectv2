@@ -1,3 +1,7 @@
+"""
+Helper functions for file handling, SVG scaling, user input extraction, and output preparation.
+Used throughout the pattern upload and resizing flow.
+"""
 import os
 from werkzeug.utils import secure_filename
 from .resize import safe_float, scale_svg, resize_image, tile_image_to_a4
@@ -7,6 +11,9 @@ import cairosvg
 
 
 def build_user_meas_str(bust, waist, hips):
+    """
+    Convert bust, waist, and hips values into a formatted string for AI input.
+    """
     measurements = []
     if bust:
         measurements.append(f"bust = {bust}")
@@ -18,16 +25,25 @@ def build_user_meas_str(bust, waist, hips):
 
 
 def clean_upload_dir(upload_dir):
+    """
+    Delete all files in the given upload directory.
+    """
     for root, dirs, files in os.walk(upload_dir):
         for file in files:
             os.remove(os.path.join(root, file))
 
 
 def is_file_allowed(filename, allowed_extensions):
+    """
+    Check if a file's extension is in the allowed list.
+    """
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
 
 def prepare_upload_path(raw_filename, root_path):
+    """
+    Create a clean upload directory and return the secure filename, full filepath, and upload directory path.
+    """
     filename = secure_filename(raw_filename)
     upload_dir = os.path.join(root_path, "uploads")
     os.makedirs(upload_dir, exist_ok=True)
@@ -37,6 +53,10 @@ def prepare_upload_path(raw_filename, root_path):
 
 
 def save_uploaded_file(file, filepath):
+    """
+    Save an uploaded file to disk.
+    Supports SVG (text) and PDF (binary) formats.
+    """
     if file.filename.lower().endswith(".svg"):
         svg_content = file.read().decode("utf-8")
         with open(filepath, "w", encoding="utf-8") as f:
@@ -50,6 +70,9 @@ def save_uploaded_file(file, filepath):
 
 
 def get_scale_factors(original_size, bust, hips, size_chart):
+    """
+    Calculate scale_x and scale_y based on size chart and user measurements.
+    """
     scale_x = scale_y = 1.0
     if original_size and original_size in size_chart:
         original = size_chart[original_size]
@@ -61,6 +84,9 @@ def get_scale_factors(original_size, bust, hips, size_chart):
 
 
 def extract_user_meas(request):
+    """
+    Extract pattern type and measurements from a Flask request.
+    """
     pattern_type = request.form.get("pattern")
     bust = safe_float(request.form.get("bust"))
     waist = safe_float(request.form.get("waist"))
@@ -70,6 +96,9 @@ def extract_user_meas(request):
 
 
 def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_svg_pattern):
+    """
+    Convert a PDF to SVGs if needed, return a summary and the SVG paths.
+    """
     if filepath.lower().endswith(".pdf"):
         svg_pages_dir = os.path.join(upload_dir, "svg_pages")
         os.makedirs(svg_pages_dir, exist_ok=True)
@@ -82,6 +111,9 @@ def get_summary_svg_paths(filepath, upload_dir, convert_pdf_to_svgs, summarize_s
 
 
 def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_size, get_pattern_parameters):
+    """
+    Prepare the prompt input and call AI to get resizing parameters.
+    """
     trimmed_summary = "\n".join(summary.splitlines()[:10])
     user_meas_str = build_user_meas_str(bust, waist, hips)
     resize_response = get_pattern_parameters(
@@ -91,6 +123,10 @@ def prepare_resize_params(pattern_type, summary, bust, waist, hips, original_siz
 
 
 def generate_scaled(svg_paths, scale_x, scale_y, upload_dir):
+    """
+    Scale and convert SVGs to PNG, resize and tile them for printing.
+    Returns lists of resized PNG and SVG file paths.
+    """
     resized_svgs = []
     resized_pngs = []
     resized_dir = os.path.join(upload_dir, "resized")
@@ -116,6 +152,9 @@ def generate_scaled(svg_paths, scale_x, scale_y, upload_dir):
     return resized_pngs, resized_svgs
 
 def scale_and_save_svg(filepath, filename, scale_x, scale_y):
+    """
+    Apply scaling to an SVG file and save the result.
+    """
     with open(filepath, "r", encoding="utf-8") as f:
         svg_content = f.read()
     scaled_svg = scale_svg(svg_content, scale_x, scale_y)
@@ -127,6 +166,9 @@ def scale_and_save_svg(filepath, filename, scale_x, scale_y):
 
 
 def zip_pngs(resized_pngs, upload_dir, filename):
+    """
+    Zip the list of resized PNG files and return the ZIP filename and path.
+    """
     resized_dir = os.path.join(upload_dir, "resized")
     os.makedirs(resized_dir, exist_ok=True)
     zip_filename = f"resized_{os.path.splitext(filename)[0]}.zip"
@@ -141,6 +183,9 @@ def zip_pngs(resized_pngs, upload_dir, filename):
 
 
 def build_render_context(filename, bust, waist, hips, instructions, zip_filename=None, scaled_svg=None):
+    """
+    Prepare data dictionary to render the result HTML page.
+    """
     return {
         "filename": filename,
         "bust": bust,
@@ -153,6 +198,9 @@ def build_render_context(filename, bust, waist, hips, instructions, zip_filename
 
 
 def parse_dimensions(response_text, keys):
+    """
+    Extract numeric values for given keys from an AI response.
+    """
     values = {}
     for line in response_text.splitlines():
         line = line.replace("**", "").replace("Output:", "").strip()

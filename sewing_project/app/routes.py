@@ -12,7 +12,6 @@ from .utils import (build_user_meas_str, clean_upload_dir, is_file_allowed,
                     extract_user_meas, get_summary_svg_paths, prepare_resize_params,
                     generate_scaled, scale_and_save_svg, zip_pngs, build_render_context,
                     parse_dimensions)
-import sqlite3
 from .database.db_helper import save_upload_to_db
 
 
@@ -32,6 +31,10 @@ def download_zip(filename):
 
 @app.route("/upload", methods=["GET", "POST"])
 def upload_file():
+    """
+    Handle file upload, AI-based resizing, and display the result.
+    Supports both PDF and SVG formats.
+    """
     if request.method == "POST":
         # Get pattern type and measurements from user
         pattern_type, bust, waist, hips, original_size = extract_user_meas(request)
@@ -122,6 +125,9 @@ def download_scaled(filename):
 
 @app.route("/generate", methods = ["POST"])
 def generate():
+    """
+    Generate a pattern SVG (e.g., bikini top/bottom) based on user input and AI logic.
+    """
     pattern_type = request.form["pattern"]
 
     if pattern_type == "bikini_top":

@@ -1,6 +1,10 @@
 import sqlite3
 
 def init_db():
+    """
+    Create the database and all tables if they don't already exist.
+    Run this once at the start of the project.
+    """
     conn = sqlite3.connect("patterns.db")
     cursor = conn.cursor()
 

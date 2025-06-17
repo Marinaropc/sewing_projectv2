@@ -4,6 +4,11 @@ import os
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 
 def get_sewing_instructions(pattern_type, measurements_summary):
+    """
+    Ask Gemini to write simple sewing instructions for the resized pattern.
+    Based on the user's measurements and the selected pattern type.
+    Returns the response
+    """
     prompt = f"""
 You are a sewing assistant helping users assemble sewing patterns.
 

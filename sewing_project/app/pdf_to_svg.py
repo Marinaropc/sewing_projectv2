@@ -12,7 +12,6 @@ def get_required_rotation(pdf_path, page_number):
     Returns: 0, 90, or -90 (degrees).
     """
     try:
-        # Render only that page at 100 dpi (fast & enough for OSD)
         img = convert_from_path(pdf_path, dpi=100,
                                 first_page=page_number,
                                 last_page=page_number)[0]
@@ -28,6 +27,10 @@ def get_required_rotation(pdf_path, page_number):
 
 
 def convert_pdf_to_svgs(pdf_path, output_dir):
+    """
+    Convert each page of a PDF to an individual SVG using pdf2svg.
+    Returns a list of SVG file paths.
+    """
     os.makedirs(output_dir, exist_ok=True)
     svg_paths = []
 

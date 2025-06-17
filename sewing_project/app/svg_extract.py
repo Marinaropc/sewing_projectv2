@@ -1,7 +1,14 @@
+"""
+Extracts path and text elements from SVG files and provides a short summary for AI-based pattern analysis.
+"""
 from svgpathtools import svg2paths2
 
 
 def extract_paths_and_labels(svg_path):
+    """
+    Extract all path and text elements from an SVG file.
+    Returns a list of elements with type, data (d or text), and optional ID.
+    """
     paths, attributes, svg_attributes = svg2paths2(svg_path)
     elements = list()
     for attr in attributes:
@@ -13,6 +20,10 @@ def extract_paths_and_labels(svg_path):
 
 
 def summarize_svg_pattern(svg_path):
+    """
+    Summarize an SVG by counting paths and printing partial data for each.
+    Used to help AI understand the structure of the pattern.
+    """
     paths, attributes, svg_attributes = svg2paths2(svg_path)
 
     summary_lines = list()

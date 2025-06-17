@@ -8,6 +8,11 @@ def save_upload_to_db(
     bust, waist, hips, torso_height, original_size,
     scale_x, scale_y, resize_response, instructions
 ):
+    """
+    Save all the data from a pattern upload to the database.
+    This includes the file info, user measurements, scale factors, and AI responses.
+    """
+
     connection = sqlite3.connect(DB_PATH)
     cursor = connection.cursor()
 

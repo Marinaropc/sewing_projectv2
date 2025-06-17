@@ -18,6 +18,10 @@ SIZE_CHART = {
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def get_pattern_parameters(pattern_type, svg_summary, user_measurements, original_size=None):
+    """
+    Ask ChatGPT to estimate the original pattern size and return scale factors based on user measurements.
+    Returns the AI's raw response with estimated size and scaling.
+    """
 
     prompt = f"""
     You are a pattern-resizing assistant.
@@ -59,6 +63,9 @@ def get_pattern_parameters(pattern_type, svg_summary, user_measurements, origina
 
 
 def generate_pattern_params_bikini_top(user_measurements):
+    """
+    Ask ChatGPT to generate SVG path dimensions and logic for a bikini top based on user measurements.
+    """
 
     prompt = f"""
     You are a sewing pattern generator assistant. Your task is to generate SVG path logic for a bikini top pattern based on user measurements.
@@ -92,6 +99,10 @@ def generate_pattern_params_bikini_top(user_measurements):
 
 
 def generate_pattern_params_corset(user_measurements):
+    """
+    Ask ChatGPT to generate a fitted corset SVG path using user body measurements.
+    Includes shaping for bust, waist, and hips.
+    """
     prompt = f"""
     You are a pattern design assistant. Generate a realistic SVG path for a corset pattern based on the user’s 
     measurements.
@@ -128,6 +139,9 @@ def generate_pattern_params_corset(user_measurements):
 
 
 def generate_pattern_params_bikini_bottom(user_measurements):
+    """
+    Ask ChatGPT to generate SVG path info for a bikini bottom, shaped to user hip and waist curves.
+    """
 
 
     prompt = f"""
