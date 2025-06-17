@@ -2,6 +2,29 @@ import os
 import subprocess
 from PyPDF2 import PdfReader, PdfWriter
 from PyPDF2.generic import NameObject, DictionaryObject
+import tempfile
+from pdf2image import convert_from_path
+import pytesseract
+
+
+def get_required_rotation(pdf_path, page_number):
+    """
+    Render one page very low-res, ask Tesseract which way is up.
+    Returns: 0, 90, or -90 (degrees).
+    """
+    try:
+        # Render only that page at 100 dpi (fast & enough for OSD)
+        img = convert_from_path(pdf_path, dpi=100,
+                                first_page=page_number,
+                                last_page=page_number)[0]
+        osd = pytesseract.image_to_osd(img)
+        if "Rotate: 90" in osd:
+            return 90          # needs clockwise rotation
+        if "Rotate: 270" in osd:
+            return -90         # needs counter-clockwise rotation
+    except Exception as e:
+        print(f"OSD failed on page {page_number}: {e}")
+    return 0                   # assume right-way-up
 
 
 def convert_pdf_to_svgs(pdf_path, output_dir):
@@ -10,6 +33,10 @@ def convert_pdf_to_svgs(pdf_path, output_dir):
 
     reader = PdfReader(pdf_path)
     for i, page in enumerate(reader.pages):
+        rotation = get_required_rotation(pdf_path, i + 1)
+        if rotation:
+            page.rotate(rotation)
+            print(f"[auto-rotate] page {i + 1} rotated {rotation}°")
         single_page_pdf = os.path.join(output_dir, f"temp_page_{i + 1}.pdf")
         output_svg = os.path.join(output_dir, f"page_{i + 1}.svg")
         writer = PdfWriter()

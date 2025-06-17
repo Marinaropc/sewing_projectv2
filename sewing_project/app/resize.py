@@ -7,7 +7,7 @@ from .pattern_generator import strip_svg_namespace
 
 
 def add_reference_line(draw, tile_size):
-    line_length_cm = 3
+    line_length_cm = 3.03
     dpi = 300
     pixels_per_cm = dpi / 2.54
     line_length_px = int(line_length_cm * pixels_per_cm)
